@@ -85,8 +85,7 @@ class SystemDataGenerator:
                 "running",
                 is_anomaly
             ])
-
-        df = pd.DataFrame(data, columns=[
+            df = pd.DataFrame(data, columns=[
             "timestamp",
             "server_id",
             "cpu_usage",
@@ -135,8 +134,7 @@ class TransactionDataGenerator:
                 transaction_type,
                 is_anomaly
             ])
-
-        df = pd.DataFrame(data, columns=[
+            df = pd.DataFrame(data, columns=[
             "timestamp",
             "amount",
             "type",
