@@ -1,99 +1,156 @@
-
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import matplotlib.pyplot as plt
+from datetime import datetime
 import os
 
-from scripts.anomaly import detect_system_anomalies, detect_transaction_anomalies
-
+# ---------------- AUTO REFRESH ---------------- #
+from streamlit_autorefresh import st_autorefresh
+st_autorefresh(interval=60000, key="refresh")  # 60 sec
 
 st.set_page_config(page_title="AI Self-Healing System", layout="wide")
 
 st.title("AI Self-Healing System Dashboard")
 
+# ---------------- LOAD TRANSACTION DATA ---------------- #
 
-# ---------------- LOAD DATA ---------------- #
-@st.cache_data
-def load_system_data():
-    return pd.read_csv("data/system_metrics.csv")
+try:
+    transaction_df = pd.read_csv("data/transactions.csv")
+    transaction_df["timestamp"] = pd.to_datetime(transaction_df["timestamp"])
 
-@st.cache_data
-def load_healed_data():
-    if os.path.exists("data/healed_system_metrics.csv"):
-        return pd.read_csv("data/healed_system_metrics.csv")
-    return None
+    last_timestamp = str(transaction_df["timestamp"].iloc[-1])
+    anomaly_count = int(transaction_df["is_anomaly"].sum())
 
-@st.cache_data
-def load_transaction_data():
-    return pd.read_csv("data/transactions.csv")
+except:
+    last_timestamp = "N/A"
+    anomaly_count = "N/A"
 
+# ---------------- LOAD SYSTEM DATA ---------------- #
 
-# ---------------- SYSTEM SECTION ---------------- #
-st.header("🖥 System Monitoring")
+try:
+    system_df = pd.read_csv("data/system_metrics.csv")
+    system_df["timestamp"] = pd.to_datetime(system_df["timestamp"])
+except:
+    system_df = pd.DataFrame()
 
-if os.path.exists("data/system_metrics.csv"):
+# ---------------- ADD ANOMALY + HEALING ---------------- #
 
-    df = load_system_data()
-    df = detect_system_anomalies(df)
+if not system_df.empty:
+    system_df["anomaly"] = system_df["cpu_usage"] > 90
 
-    anomalies = df[df["anomaly"] == 1]
+    # simulate healing (reduce spikes)
+    system_df["healed_cpu"] = system_df["cpu_usage"].apply(
+        lambda x: x if x < 90 else 70
+    )
+else:
+    system_df["anomaly"] = []
+    system_df["healed_cpu"] = []
 
-    col1, col2 = st.columns(2)
+# ---------------- LIVE STATUS ---------------- #
 
-    with col1:
-        st.metric("Total Records", len(df))
-    with col2:
-        st.metric("Anomalies", len(anomalies))
+st.subheader("🔄 Live Data Status")
 
-    # CPU Graph
-    fig = px.line(df, x="timestamp", y="cpu_usage", title="CPU Usage")
-    st.plotly_chart(fig, use_container_width=True)
+col1, col2, col3, col4 = st.columns(4)
 
-    # 🔥 Self-healing comparison
-    healed_df = load_healed_data()
+with col1:
+    st.metric("Last Data Timestamp", last_timestamp)
 
-    if healed_df is not None:
-        st.subheader(" Self-Healing Effect")
+with col2:
+    st.metric("Transaction Anomalies", anomaly_count)
 
-        col1, col2 = st.columns(2)
+try:
+    file_time = datetime.fromtimestamp(
+        os.path.getmtime("data/system_metrics.csv")
+    ).strftime("%Y-%m-%d %H:%M:%S")
+except:
+    file_time = "N/A"
 
-        with col1:
-            st.write("Before Healing")
-            st.line_chart(df["cpu_usage"])
+with col3:
+    st.metric("Data Last Updated", file_time)
 
-        with col2:
-            st.write("After Healing")
-            st.line_chart(healed_df["cpu_usage"])
+with col4:
+    st.metric("Dashboard Refresh Time", datetime.now().strftime("%H:%M:%S"))
 
-        st.success("System auto-healed successfully")
+# ---------------- SYSTEM MONITORING ---------------- #
+
+st.subheader("📊 System Monitoring")
+
+if not system_df.empty:
+
+    st.write("Total Records:", len(system_df))
+    st.write("System Anomalies:", int(system_df["anomaly"].sum()))
+
+    # reduce overcrowding
+    plot_df = system_df.tail(200)
+
+    # ---------------- BEFORE vs AFTER GRAPH ---------------- #
+
+    st.subheader("CPU Usage (Before vs After Self-Healing)")
+
+    fig, ax = plt.subplots(figsize=(10, 4))
+
+    # BEFORE
+    ax.plot(plot_df["timestamp"], plot_df["cpu_usage"], label="Before", alpha=0.6)
+
+    # AFTER
+    ax.plot(plot_df["timestamp"], plot_df["healed_cpu"], label="After (Healed)", linestyle="--")
+
+    # anomalies
+    anomalies = plot_df[plot_df["anomaly"] == True]
+    ax.scatter(
+        anomalies["timestamp"],
+        anomalies["cpu_usage"],
+        color="red",
+        s=20,
+        label="Anomaly"
+    )
+
+    ax.set_xlabel("Time")
+    ax.set_ylabel("CPU Usage")
+    ax.legend()
+    plt.xticks(rotation=30)
+
+    st.pyplot(fig)
+
+    # ---------------- ALERT ---------------- #
+
+    if len(anomalies) > 0:
+        st.warning("⚠️ Anomalies detected → Self-healing applied")
+    else:
+        st.success("✅ System stable")
 
 else:
-    st.warning("Run main.py first")
-
+    st.write("No system data available")
 
 # ---------------- TRANSACTIONS ---------------- #
-st.header(" Transaction Monitoring")
 
-if os.path.exists("data/transactions.csv"):
+st.subheader("🚨 Suspicious Transactions")
 
-    df_t = load_transaction_data()
-    df_t = detect_transaction_anomalies(df_t)
+try:
+    suspicious_df = transaction_df[transaction_df["is_anomaly"] == 1]
+    st.dataframe(suspicious_df.tail(10), use_container_width=True)
+except:
+    st.write("No suspicious data")
 
-    anomalies_t = df_t[df_t["anomaly"] == 1]
+# ---------------- SELF HEALING ACTIONS ---------------- #
 
-    col1, col2 = st.columns(2)
+st.subheader("🛠 Self-Healing Actions")
 
-    with col1:
-        st.metric("Total Transactions", len(df_t))
-    with col2:
-        st.metric("Fraud Detected", len(anomalies_t))
+try:
+    healing_df = pd.read_csv("data/healing_log.csv")
+    st.dataframe(healing_df.tail(10), use_container_width=True)
+except:
+    st.write("No healing actions yet")
 
-    fig2 = px.line(df_t, x="timestamp", y="amount", title="Transaction Amount")
-    st.plotly_chart(fig2, use_container_width=True)
+# ---------------- DEBUG ---------------- #
 
-    if not anomalies_t.empty:
-        st.subheader(" Suspicious Transactions")
-        st.dataframe(anomalies_t.head(20))
+st.subheader("📁 Debug Info")
 
-else:
-    st.warning("Run main.py first")
+try:
+    mod_time = datetime.fromtimestamp(
+        os.path.getmtime("data/system_metrics.csv")
+    ).strftime("%Y-%m-%d %H:%M:%S")
+
+    st.write("Last data update:", mod_time)
+except:
+    st.write("File not found")

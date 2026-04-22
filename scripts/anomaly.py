@@ -1,83 +1,34 @@
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler
 
-
-# ---------------- SYSTEM ANOMALY ---------------- #
 def detect_system_anomalies(df):
 
-    df = df.copy()
+    feature_cols = ["cpu_usage", "api_latency", "error_rate"]
 
-    # Feature Engineering
-    df["cpu_latency_ratio"] = df["cpu_usage"] / (df["api_latency"] + 1)
-    df["error_cpu_ratio"] = df["error_rate"] / (df["cpu_usage"] + 1)
+    features = df[feature_cols]
 
-    features = df[[
-        "cpu_usage",
-        "memory_usage",
-        "api_latency",
-        "transaction_count",
-        "error_rate",
-        "cpu_latency_ratio",
-        "error_cpu_ratio"
-    ]]
+    model = IsolationForest(contamination=0.1, random_state=42)
 
-    # Scaling
-    scaler = StandardScaler()
-    features_scaled = scaler.fit_transform(features)
+    df["anomaly"] = model.fit_predict(features)
+    df["anomaly"] = df["anomaly"].map({1: 0, -1: 1})
 
-    # Model
-    model = IsolationForest(
-        contamination='auto',
-        random_state=42
-    )
-
-    df["anomaly"] = model.fit_predict(features_scaled)
-
-    # Convert (-1 → anomaly, 1 → normal)
-    df["anomaly"] = df["anomaly"].apply(lambda x: 1 if x == -1 else 0)
-
-    # Severity Classification
-    def classify_severity(row):
-        if row["cpu_usage"] > 90 or row["error_rate"] > 8:
-            return "HIGH"
-        elif row["cpu_usage"] > 75:
-            return "MEDIUM"
-        else:
-            return "LOW"
-
-    df["severity"] = df.apply(classify_severity, axis=1)
+    print("System anomalies detected:", df["anomaly"].sum())
 
     return df
 
 
-# ---------------- TRANSACTION ANOMALY ---------------- #
 def detect_transaction_anomalies(df):
 
-    df = df.copy()
+    df["log_amount"] = df["amount"].apply(lambda x: 0 if x <= 0 else np.log(x))
 
-    # Feature Engineering
-    df["log_amount"] = np.log1p(df["amount"])
+    features = df[["log_amount"]]
 
-    features = df[[
-        "amount",
-        "log_amount"
-    ]]
+    model = IsolationForest(contamination=0.05, random_state=42)
 
-    # Scaling
-    scaler = StandardScaler()
-    features_scaled = scaler.fit_transform(features)
+    df["anomaly"] = model.fit_predict(features)
+    df["anomaly"] = df["anomaly"].map({1: 0, -1: 1})
 
-    # Model
-    model = IsolationForest(
-        contamination='auto',
-        random_state=42
-    )
-
-    df["anomaly"] = model.fit_predict(features_scaled)
-
-    # Convert labels
-    df["anomaly"] = df["anomaly"].apply(lambda x: 1 if x == -1 else 0)
+    print("Transaction anomalies detected:", df["anomaly"].sum())
 
     return df
