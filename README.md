@@ -94,4 +94,5 @@ Conclusion
 This project demonstrates how AI can be used not only to detect system issues but also to automatically resolve them, improving reliability and reducing manual intervention.
 
 Author
+
 Nanditha Krishna EM
