@@ -18,45 +18,50 @@ def log(message):
 
 # ---------------- SELF HEALING FUNCTION ---------------- #
 def self_heal_system(df, anomalies):
-    print("\n⚙️ Initiating self-healing actions...")
+
+    print("\nStarting self-healing process...")
 
     df = df.copy()
-    action = []
+    actions = []
 
     if not anomalies.empty:
 
-        if anomalies["cpu_usage"].max() > 90:
-            print("🔥 High CPU → Load balancing")
+        # CPU healing
+        if "cpu_usage" in anomalies.columns and anomalies["cpu_usage"].max() > 90:
+            print(" High CPU detected → Reducing load")
             df["cpu_usage"] = df["cpu_usage"].astype(float)
             df.loc[df["cpu_usage"] > 90, "cpu_usage"] *= 0.6
-            action.append("CPU Load Balanced")
+            actions.append("CPU Load Balanced")
 
-        if anomalies["api_latency"].max() > 300:
-            print("⚡ High latency → Restarting services")
+        # API latency healing
+        if "api_latency" in anomalies.columns and anomalies["api_latency"].max() > 300:
+            print("High latency detected → Restart simulation")
             df["api_latency"] = df["api_latency"].astype(float)
             df.loc[df["api_latency"] > 300, "api_latency"] *= 0.5
-            action.append("API Restarted")
+            actions.append("API Restarted")
 
-        if anomalies["error_rate"].max() > 5:
-            print("❗ High error → System recovery")
+        # Error rate healing
+        if "error_rate" in anomalies.columns and anomalies["error_rate"].max() > 5:
+            print("High error rate → Applying recovery")
             df["error_rate"] = df["error_rate"].astype(float)
             df.loc[df["error_rate"] > 5, "error_rate"] *= 0.4
-            action.append("System Recovered")
+            actions.append("System Recovered")
 
-
-        if "disk_io" in df.columns and "disk_io" in anomalies.columns:
-            if anomalies["disk_io"].max() > 300:
-                print("💾 High disk usage → Optimizing IO")
+        # Disk IO healing (NEW but safe)
+        if "disk_io" in df.columns:
+            if "disk_io" in anomalies.columns and anomalies["disk_io"].max() > 300:
+                print(" High disk usage → Optimizing IO")
                 df["disk_io"] = df["disk_io"].astype(float)
                 df.loc[df["disk_io"] > 300, "disk_io"] *= 0.7
-                action.append("Disk Optimized")
+                actions.append("Disk Optimized")
 
-    if not action:
-        action = ["System Healthy"]
+    # If no issues
+    if not actions:
+        actions = ["System Healthy"]
 
-    final_action = ", ".join(action)
+    final_action = ", ".join(actions)
 
-    print(f"Action taken: {final_action}")
+    print(f" Action taken: {final_action}")
     log(f"Self-healing action: {final_action}")
 
     # ---------------- SAVE HEALING LOG ---------------- #
@@ -67,12 +72,12 @@ def self_heal_system(df, anomalies):
         "status": "Resolved" if final_action != "System Healthy" else "Healthy"
     }])
 
-    healing_log_path = "data/healing_log.csv"
+    log_path = "data/healing_log.csv"
 
-    if os.path.exists(healing_log_path):
-        healing_entry.to_csv(healing_log_path, mode='a', header=False, index=False)
+    if os.path.exists(log_path):
+        healing_entry.to_csv(log_path, mode='a', header=False, index=False)
     else:
-        healing_entry.to_csv(healing_log_path, index=False)
+        healing_entry.to_csv(log_path, index=False)
 
     # Save healed dataset
     df.to_csv("data/healed_system_metrics.csv", index=False)
@@ -82,6 +87,7 @@ def self_heal_system(df, anomalies):
 
 # ---------------- DATA GENERATION ---------------- #
 def generate_data():
+
     print("Generating fresh data...")
 
     system_gen = SystemDataGenerator()
@@ -107,15 +113,14 @@ def check_system():
     if not anomalies.empty:
 
         print("\nSample anomalies:")
-        print(anomalies[[
-            "timestamp", "cpu_usage", "api_latency", "error_rate"
-        ]].head())
+        cols = ["timestamp", "cpu_usage", "api_latency", "error_rate"]
 
-        if "status" in anomalies.columns:
-            print("\nAnomaly type breakdown:")
-            print(anomalies["status"].value_counts())
+        if "disk_io" in df.columns:
+            cols.append("disk_io")
 
-        # SELF HEALING
+        print(anomalies[cols].head())
+
+        # Apply healing
         healed_df, action = self_heal_system(df, anomalies)
 
     else:
@@ -146,16 +151,18 @@ def check_finance():
 
 # ---------------- MAIN ---------------- #
 def main():
-    print("\n🚀 Running AI self-healing system...\n")
 
-    # 🔥 ALWAYS GENERATE NEW DATA
+    print("\nRunning AI Self-Healing System...\n")
+
+    # Always generate fresh data
     generate_data()
 
     system_df, healed_df, action = check_system()
     transaction_df, txn_anomalies = check_finance()
 
-    print("\n✅ Run completed\n")
+    print("\nRun completed successfully\n")
 
 
+# ---------------- RUN ---------------- #
 if __name__ == "__main__":
     main()

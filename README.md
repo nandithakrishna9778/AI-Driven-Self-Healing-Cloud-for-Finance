@@ -1,109 +1,97 @@
-AI Self-Healing System Dashboard
+# AI Self-Healing System
 
-Project Overview
+## Overview
 
-This project is an AI-based system designed to monitor system performance metrics, detect anomalies, and simulate a self-healing mechanism. It uses machine learning techniques to identify unusual patterns in system behavior and visualizes the results using an interactive dashboard.
+This project is an AI-based self-healing system that detects anomalies in system performance and transactions, and automatically performs corrective actions.
 
----
 
-Features
+## Features
 
-- Real-time system monitoring (CPU, Memory, Disk I/O)
-- Anomaly detection using machine learning
-- Interactive dashboard using Streamlit
--  Simulated self-healing mechanism
-- Modular project design
+* Anomaly detection using Isolation Forest (Machine Learning)
+* Automatic self-healing (CPU, latency, error rate correction)
+* Transaction fraud detection
+* Real-time monitoring dashboard using Streamlit
+* Logging of system issues and recovery actions
 
----
 
-Installation & Setup
 
-1. Create Virtual Environment
+## Technologies Used
 
-python -m venv venv
+* Python
+* Pandas, NumPy
+* Scikit-learn
+* Streamlit
+* Matplotlib
 
-2. Activate Environment
 
-venv\Scripts\activate
 
-3. Install Dependencies
+## How It Works
 
-pip install -r requirements.txt
+1. System and transaction data are generated
+2. Machine learning model detects anomalies
+3. If anomalies are found, self-healing actions are applied
+4. Results are logged and displayed in dashboard
 
----
+
+## Project Structure
+
+* `main.py` → Main controller (runs full system)
+* `generate_data.py` → Generates system & transaction data
+* `anomaly.py` → Detects anomalies using ML
+* `app.py` → Streamlit dashboard
+* `data/` → Stores generated data
+* `logs/` → Stores system logs
+
 
 How to Run
 
-Step 1: Generate Data
+### Step 1: Clone repository
 
-python scripts/generate_data.py
+```bash
+git clone <your-repo-link>
+cd <your-project-folder>
+```
 
-Step 2: Run Backend (Optional)
+### Step 2: Install dependencies
 
-python scripts/main.py
+```bash
+pip install -r requirements.txt
+```
 
-Step 3: Launch Dashboard
+### Step 3: Run main system
 
-python -m streamlit run dashboard/app.py
+```bash
+python main.py
+```
 
----
+### Step 4: Run dashboard
 
-Dataset Information
+```bash
+streamlit run app.py
+```
+Output
 
-- The dataset is synthetically generated
-- Contains approximately 3000 records
-- Includes:
-  - Timestamp
-  - CPU Usage
-  - Memory Usage
-  - Disk I/O
+* Detects system anomalies (CPU, latency, errors, disk usage)
+* Detects suspicious transactions
+* Automatically applies fixes
+* Displays results in interactive dashboard
 
----
+Limitations
 
-Anomaly Detection
+* Uses synthetic data (not real-time production data)
+* Model parameters may require tuning for real-world scenarios
 
-- Detects unusual spikes and drops in system metrics
-- Identifies abnormal system behavior
-- Can be extended to real-world monitoring systems
-
----
-
-Self-Healing Concept
-
-- Detect anomalies
-- Apply corrective logic (simulated)
-- Generate a healed dataset
-
----
-
- Technologies Used
-
-- Python
-- Pandas
-- Scikit-learn
-- Streamlit
-- Plotly
-
----
-
-Use Cases
-
-- System monitoring dashboards
-- Predictive maintenance
-- AI-based automation systems
-- IT infrastructure health monitoring
-
----
 
 Future Improvements
 
-- Real-time data integration
-- Alert system (email/SMS)
-- Advanced anomaly detection models
-- Cloud deployment
+* Real-time data streaming
+* Advanced anomaly detection models
+* Alert system (Email/SMS notifications)
 
----
 
- Author
+Conclusion
 
+This project demonstrates how AI can be used not only to detect system issues but also to automatically resolve them, improving reliability and reducing manual intervention.
+
+Author
 Nanditha Krishna EM

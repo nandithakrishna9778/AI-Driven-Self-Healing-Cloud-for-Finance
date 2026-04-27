@@ -1,160 +1,137 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+import os
 
 
-# ================= SYSTEM DATA GENERATOR ================= #
+# ---------------- SYSTEM DATA GENERATOR ---------------- #
 class SystemDataGenerator:
 
     def __init__(self, num_records=3000):
         self.num_records = num_records
 
-    def get_time_load(self, hour):
-        if 9 <= hour <= 12:
-            return 1.2
-        elif 12 <= hour <= 16:
-            return 1.5
-        elif 16 <= hour <= 20:
-            return 1.3
-        else:
-            return 0.7
-
     def generate(self):
-
         data = []
-        start_time = datetime.now()
 
-        server_profiles = {
-            "server_1": 40,
-            "server_2": 50,
-            "server_3": 60,
-            "server_4": 45
-        }
+        # Use current time as reference
+        current_time = datetime.now()
 
         for i in range(self.num_records):
 
-            timestamp = start_time + timedelta(minutes=i)
-            hour = timestamp.hour
+            # Generate timestamp (past → present)
+            timestamp = current_time - timedelta(minutes=self.num_records - i)
 
-            server_id = np.random.choice(list(server_profiles.keys()))
+            # -------- NORMAL VALUES -------- #
+            cpu_usage = np.random.randint(40, 85)
+            api_latency = np.random.randint(100, 600)
+            error_rate = np.random.uniform(0, 20)
 
-            base_cpu = server_profiles[server_id]
-            load_factor = self.get_time_load(hour)
+            # New: disk usage
+            disk_io = np.random.randint(100, 500)
 
-            transaction_count = int(np.random.randint(200, 500) * load_factor)
+            # -------- ADD ANOMALIES -------- #
+            if np.random.rand() < 0.1:
+                cpu_usage = np.random.randint(90, 100)
 
-            cpu = base_cpu * load_factor + (transaction_count * 0.05)
-            cpu = min(cpu, 100)
+            if np.random.rand() < 0.08:
+                api_latency = np.random.randint(400, 600)
 
-            memory = np.random.normal(60, 10)
-            latency = 100 + (transaction_count * 0.3)
-            error_rate = 1 + (cpu / 100) * 2
-
-            is_anomaly = 0
-
-            # Inject anomalies
             if np.random.rand() < 0.05:
+                error_rate = np.random.uniform(10, 20)
 
-                event = np.random.choice(["spike", "failure", "attack"])
-                is_anomaly = 1
+            if np.random.rand() < 0.07:
+                disk_io = np.random.randint(350, 500)
 
-                if event == "spike":
-                    transaction_count *= 2
-                    cpu += 30
-                    latency += 100
-
-                elif event == "failure":
-                    error_rate += 8
-                    latency += 200
-
-                elif event == "attack":
-                    transaction_count *= 3
-                    cpu += 40
-                    error_rate += 5
-
-            cpu = min(cpu, 100)
-
+            # Store record
             data.append([
                 timestamp,
-                server_id,
-                cpu,
-                memory,
-                latency,
-                transaction_count,
+                cpu_usage,
+                api_latency,
                 error_rate,
-                "running",
-                is_anomaly
+                disk_io
             ])
-            df = pd.DataFrame(data, columns=[
+
+        # Create DataFrame
+        df = pd.DataFrame(data, columns=[
             "timestamp",
-            "server_id",
             "cpu_usage",
-            "memory_usage",
             "api_latency",
-            "transaction_count",
             "error_rate",
-            "system_status",
-            "is_anomaly"
+            "disk_io"
         ])
 
         return df
 
 
-# ================= TRANSACTION DATA GENERATOR ================= #
+# ---------------- TRANSACTION DATA GENERATOR ---------------- #
 class TransactionDataGenerator:
 
     def __init__(self, num_records=3000):
         self.num_records = num_records
 
     def generate(self):
-
         data = []
-        start_time = datetime.now()
+
+        current_time = datetime.now()
 
         for i in range(self.num_records):
 
-            timestamp = start_time + timedelta(minutes=i)
+            timestamp = current_time - timedelta(minutes=self.num_records - i)
 
-            # Generate realistic positive transaction amount
+            # Normal transaction
             amount = abs(np.random.normal(500, 200))
             amount = max(50, amount)
 
             transaction_type = np.random.choice(["credit", "debit"])
 
             is_anomaly = 0
+            label = "normal"
 
-            # Inject anomalies
+            # Fraud case
             if np.random.rand() < 0.05:
-                amount = np.random.choice([80000, 100000, 150000])
+                amount = np.random.choice([100000, 150000, 200000])
                 is_anomaly = 1
+                label = "fraud"
 
             data.append([
                 timestamp,
                 amount,
                 transaction_type,
+                label,
                 is_anomaly
             ])
-            df = pd.DataFrame(data, columns=[
+
+        df = pd.DataFrame(data, columns=[
             "timestamp",
             "amount",
             "type",
+            "label",
             "is_anomaly"
         ])
-
+        df["timestamp"] = pd.to_datetime(df["timestamp"]).dt.strftime("%Y-%m-%d %H:%M:%S")
         return df
 
 
-# ================= MAIN (OPTIONAL DIRECT RUN) ================= #
-if __name__ == "__main__":
+# ---------------- MAIN FUNCTION ---------------- #
+def main():
 
-    print("Generating system data...")
+    print("Generating fresh data...")
+
+    os.makedirs("data", exist_ok=True)
+
+    # Generate system data
     system_gen = SystemDataGenerator()
     system_df = system_gen.generate()
     system_df.to_csv("data/system_metrics.csv", index=False)
 
-    print("Generating transaction data...")
+    # Generate transaction data
     transaction_gen = TransactionDataGenerator()
     transaction_df = transaction_gen.generate()
     transaction_df.to_csv("data/transactions.csv", index=False)
 
-    print("All datasets generated successfully!")
+    print("Data updated at:", datetime.now())
+
+
+# ---------------- RUN ---------------- #
+if __name__ == "__main__":
+    main()
